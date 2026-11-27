@@ -171,11 +171,11 @@ def main():
                 too_long.append((b["tag"] + " deck", w2))
     check("14 briefs + decks fit", not too_long, too_long)
 
-    # 15. date discipline blocks: 18 DATE CHECK items, 3 Saturday slots
+    # 15. date discipline blocks: 20 DATE CHECK items, 3 Saturday slots
     dc = data["datecheck"]["items"]
     sat = data["saturday"]
-    check("15 datecheck 18 + saturday 3 pending",
-          len(dc) == 18 and len(sat["items"]) == 3 and
+    check("15 datecheck 20 + saturday 3 pending",
+          len(dc) == 20 and len(sat["items"]) == 3 and
           "PENDING" in sat["header"], (len(dc), len(sat["items"])))
 
     # 16. thumbnail 300px still carries signal
