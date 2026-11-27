@@ -31,24 +31,25 @@ RULE = (198, 190, 172)
 FAINT = (216, 210, 196)
 GREEN = (31, 61, 43)
 GOLD = (201, 162, 39)
+LINE2 = (64, 58, 48)
 
 BUDGET = [
     ("masthead", 52),
     ("lead", 48),
-    ("numbers", 22),
-    ("regions", 16),
-    ("act1_head", 18),
+    ("numbers", 18),
+    ("regions", 14),
+    ("act1_head", 16),
     ("nz_hero", 150),
-    ("act1_briefs", 80),
-    ("act2_head", 18),
-    ("ukraine_hero", 192),
-    ("act2_briefs", 48),
-    ("act3_head", 18),
+    ("act1_briefs", 110),
+    ("act2_head", 16),
+    ("ukraine_hero", 156),
+    ("act2_briefs", 66),
+    ("act3_head", 16),
     ("nfl_banner", 150),
-    ("act3_briefs", 80),
-    ("saturday", 34),
-    ("datecheck", 84),
-    ("footer", 14),
+    ("act3_briefs", 110),
+    ("saturday", 30),
+    ("datecheck", 60),
+    ("footer", 12),
 ]
 assert sum(h for _, h in BUDGET) == 1024, "budget must sum to 1024"
 Y = {}
@@ -87,6 +88,9 @@ F_MAP_L = load_font("NotoSans-Bold.ttf", 8)
 F_DC_H = load_font("NotoSans-Bold.ttf", 10)
 F_DC = load_font("NotoSansMono-Regular.ttf", 9)
 F_FOOT = load_font("NotoSans-Regular.ttf", 9)
+F_DECK2 = load_font("NotoSans-Regular.ttf", 8)
+F_LABEL = load_font("NotoSans-Bold.ttf", 10)
+F_LEGEND = load_font("NotoSans-Regular.ttf", 8)
 
 BOXES = []
 
@@ -328,15 +332,23 @@ def paint_nfl(img, box):
 
 # ---------------------------------------------------------------- layout
 
-def hero_band(img, box, headline, deck):
+def hero_band(img, box, headline, deck, src="", ver=""):
     x0, y0, x1, y1 = box
     band_h = 48
     d = ImageDraw.Draw(img, "RGBA")
     d.rectangle([x0, y1 - band_h, x1, y1], fill=(16, 26, 44, 235))
     f_h = fit_font("NotoSerifDisplay-Black.ttf", 26, headline, CONTENT_W - 24)
     draw_left(d, x0 + 12, y1 - band_h + 4, headline, f_h, (255, 255, 255))
-    f_d = fit_font("NotoSans-Regular.ttf", 12, deck, CONTENT_W - 24)
+    label = (src + " · " + ver).strip(" · ") if src else ""
+    lw = text_w(F_LABEL, label) if label else 0
+    f_d = fit_font("NotoSans-Regular.ttf", 12, deck, CONTENT_W - 24 - lw - 16)
     draw_left(d, x0 + 12, y1 - 14, deck, f_d, (215, 220, 230))
+    if label:
+        lx = x1 - 12 - lw
+        assert x0 + 12 + text_w(f_d, deck) + 12 <= lx, \
+            "hero deck collides with label"
+        d.text((lx, y1 - 14), label, font=F_LABEL, fill=(255, 214, 130))
+        record(label[:24], *ink_box(F_LABEL, label, lx, y1 - 14))
 
 
 def draw_masthead(img, data):
@@ -363,85 +375,107 @@ def draw_lead(img, data):
                    CONTENT_W)
     draw_left(d, MARGIN, y0 + 11, lead["headline"], f_h, INK)
     draw_left(d, MARGIN, y0 + 37, lead["deck"], F_DECK, MUTED)
+    label = (lead.get("src", "") + " · " + lead.get("ver", "")).strip(" · ")
+    if label:
+        lw = text_w(F_LABEL, label)
+        lx = W - MARGIN - lw
+        assert MARGIN + text_w(F_DECK, lead["deck"]) + 12 <= lx, \
+            "lead deck collides with label"
+        d.text((lx, y0 + 37), label, font=F_LABEL, fill=RED)
+        record(label[:24], *ink_box(F_LABEL, label, lx, y0 + 37))
 
 
 def draw_numbers(img, items):
     y0 = Y["numbers"]
     d = ImageDraw.Draw(img, "RGBA")
-    d.rectangle([MARGIN, y0 + 2, W - MARGIN, y0 + 20], fill=NAVY)
+    d.rectangle([MARGIN, y0 + 2, W - MARGIN, y0 + 17], fill=NAVY)
     s = " · ".join(items)
     f = fit_font("NotoSansMono-Bold.ttf", 11, s, CONTENT_W - 16)
-    draw_center(d, W // 2, y0 + 5, s, f, (255, 255, 255))
+    draw_center(d, W // 2, y0 + 3, s, f, (255, 255, 255))
 
 
 def draw_regions(img, s):
     y0 = Y["regions"]
     d = ImageDraw.Draw(img, "RGBA")
     f = fit_font("NotoSans-Regular.ttf", 10, s, CONTENT_W)
-    draw_center(d, W // 2, y0 + 2, s, f, (60, 55, 45))
+    draw_center(d, W // 2, y0 + 1, s, f, (60, 55, 45))
 
 
 def draw_act_header(img, y0, title, sub):
     d = ImageDraw.Draw(img, "RGBA")
-    draw_left(d, MARGIN, y0 + 1, title, F_ACT, INK)
+    draw_left(d, MARGIN, y0 + 0, title, F_ACT, INK)
     sw = text_w(F_ACTSUB, sub)
-    draw_left(d, W - MARGIN - sw, y0 + 2, sub, F_ACTSUB, RED)
-    d.line([(MARGIN, y0 + 16), (W - MARGIN, y0 + 16)], fill=RULE, width=1)
+    draw_left(d, W - MARGIN - sw, y0 + 1, sub, F_ACTSUB, RED)
+    d.line([(MARGIN, y0 + 14), (W - MARGIN, y0 + 14)], fill=RULE, width=1)
 
 
 def draw_briefs(img, y0, briefs):
+    # Two-line briefs, 22px rows: line 1 = TAG + headline (11px bold),
+    # line 2 = SOURCE + verification label + 1-line deck (8px).
+    # No separator rules: the bold headline of the next row separates rows.
     d = ImageDraw.Draw(img, "RGBA")
     n = len(briefs)
     rows = (n + 2) // 3
+    f_h = load_font("NotoSerif-Bold.ttf", 11)
     for i, b in enumerate(briefs):
         col = i // rows
         row = i % rows
         x = MARGIN + col * (COL_W + GUTTER)
-        y = y0 + row * 16
+        y = y0 + row * 22
         tag = b["tag"] + " — "
         head = b["headline"]
-        tw = text_w(F_BTAG, tag) + 2 + text_w(F_BRIEF, head)
-        f_h = F_BRIEF
-        if tw > COL_W:
-            f_h = load_font("NotoSerif-Bold.ttf", 11)
-            tw = text_w(F_BTAG, tag) + 2 + text_w(f_h, head)
+        tw = text_w(F_BTAG, tag) + 2 + text_w(f_h, head)
         assert tw <= COL_W, "brief too long (%d>%d): %s" % (tw, COL_W, head)
-        draw_left(d, x, y + 2, tag, F_BTAG, RED)
+        draw_left(d, x, y + 0, tag, F_BTAG, RED)
         tx = x + text_w(F_BTAG, tag) + 2
-        draw_left(d, tx, y + 2, head, f_h, INK)
-        if row < rows - 1:
-            d.line([(x, y + 15), (x + COL_W, y + 15)], fill=FAINT, width=1)
+        draw_left(d, tx, y + 0, head, f_h, INK)
+        line2 = "%s · %s — %s" % (b["src"], b["ver"], b["deck"])
+        w2 = text_w(F_DECK2, line2)
+        assert w2 <= COL_W, "deck too long (%d>%d): %s" % (w2, COL_W, line2)
+        draw_left(d, x, y + 14, line2, F_DECK2, LINE2)
 
 
 def draw_saturday(img, data):
     y0 = Y["saturday"]
     d = ImageDraw.Draw(img, "RGBA")
     sat = data["saturday"]
-    draw_left(d, MARGIN, y0 + 3, sat["header"], F_SAT_H, RED)
+    draw_left(d, MARGIN, y0 + 2, sat["header"], F_SAT_H, RED)
     s = " · ".join(sat["items"])
     f = fit_font("NotoSans-Regular.ttf", 10, s, CONTENT_W)
-    draw_left(d, MARGIN, y0 + 17, s, f, INK)
+    draw_left(d, MARGIN, y0 + 15, s, f, INK)
 
 
 def draw_datecheck(img, data):
     y0 = Y["datecheck"]
     d = ImageDraw.Draw(img, "RGBA")
     dc = data["datecheck"]
-    d.rectangle([MARGIN, y0 + 2, W - MARGIN, y0 + 82], outline=RED, width=1)
-    draw_left(d, MARGIN + 8, y0 + 6, dc["header"], F_DC_H, RED)
+    assert len(dc["items"]) == 18, "datecheck must hold 18 items"
+    d.rectangle([MARGIN, y0 + 2, W - MARGIN, y0 + 58], outline=RED, width=1)
+    draw_left(d, MARGIN + 8, y0 + 5, dc["header"], F_DC_H, RED)
+    legend = ("HOW SURE: OFFICIAL=confirmed · REPORTED=named source · "
+              "CLAIM=unverified · ONGOING=developing")
+    lw = text_w(F_LEGEND, legend)
+    lx = W - MARGIN - 8 - lw
+    assert MARGIN + 8 + text_w(F_DC_H, dc["header"]) + 12 <= lx, \
+        "legend collides with datecheck header"
+    d.text((lx, y0 + 5), legend, font=F_LEGEND, fill=MUTED)
+    record(legend[:24], *ink_box(F_LEGEND, legend, lx, y0 + 5))
     for li in range(3):
-        s = " · ".join(dc["items"][li * 4:(li + 1) * 4])
+        s = " · ".join(dc["items"][li * 6:(li + 1) * 6])
         f = fit_font("NotoSansMono-Regular.ttf", 10, s, CONTENT_W - 16)
-        draw_left(d, MARGIN + 8, y0 + 26 + li * 19, s, f, MUTED)
+        draw_left(d, MARGIN + 8, y0 + 19 + li * 14, s, f, MUTED)
 
 
 def draw_footer(img, data):
     y0 = Y["footer"]
     d = ImageDraw.Draw(img, "RGBA")
     f = data["footer"]
-    draw_left(d, MARGIN, y0 + 2, f["sources"], F_FOOT, MUTED)
+    draw_left(d, MARGIN, y0 + 1, f["sources"], F_FOOT, MUTED)
     nw = text_w(F_FOOT, f["note"])
-    draw_left(d, W - MARGIN - nw, y0 + 2, f["note"], F_FOOT, MUTED)
+    nx = W - MARGIN - nw
+    assert MARGIN + text_w(F_FOOT, f["sources"]) + 8 <= nx, \
+        "footer sources collide with note"
+    draw_left(d, nx, y0 + 1, f["note"], F_FOOT, MUTED)
 
 
 def check_overlaps():
@@ -479,18 +513,19 @@ def main():
     nz = data["acts"][0]["hero"]
     paint_nz(img, (MARGIN, Y["nz_hero"], W - MARGIN, Y["nz_hero"] + 150))
     hero_band(img, (MARGIN, Y["nz_hero"], W - MARGIN, Y["nz_hero"] + 150),
-              nz["headline"], nz["deck"])
+              nz["headline"], nz["deck"], nz["src"], nz["ver"])
     draw_briefs(img, Y["act1_briefs"], data["acts"][0]["briefs"])
     uk = data["acts"][1]["hero"]
     paint_ukraine(img, (MARGIN, Y["ukraine_hero"], W - MARGIN,
-                        Y["ukraine_hero"] + 192))
+                        Y["ukraine_hero"] + 156))
     hero_band(img, (MARGIN, Y["ukraine_hero"], W - MARGIN,
-                    Y["ukraine_hero"] + 192), uk["headline"], uk["deck"])
+                    Y["ukraine_hero"] + 156), uk["headline"], uk["deck"],
+              uk["src"], uk["ver"])
     draw_briefs(img, Y["act2_briefs"], data["acts"][1]["briefs"])
     nf = data["acts"][2]["banner"]
     paint_nfl(img, (MARGIN, Y["nfl_banner"], W - MARGIN, Y["nfl_banner"] + 150))
     hero_band(img, (MARGIN, Y["nfl_banner"], W - MARGIN, Y["nfl_banner"] + 150),
-              nf["headline"], nf["deck"])
+              nf["headline"], nf["deck"], nf["src"], nf["ver"])
     draw_briefs(img, Y["act3_briefs"], data["acts"][2]["briefs"])
     draw_saturday(img, data)
     draw_datecheck(img, data)
