@@ -449,7 +449,7 @@ def draw_datecheck(img, data):
     y0 = Y["datecheck"]
     d = ImageDraw.Draw(img, "RGBA")
     dc = data["datecheck"]
-    assert len(dc["items"]) == 18, "datecheck must hold 18 items"
+    assert len(dc["items"]) == 20, "datecheck must hold 20 items"
     d.rectangle([MARGIN, y0 + 2, W - MARGIN, y0 + 58], outline=RED, width=1)
     draw_left(d, MARGIN + 8, y0 + 5, dc["header"], F_DC_H, RED)
     legend = ("HOW SURE: OFFICIAL=confirmed · REPORTED=named source · "
@@ -461,7 +461,7 @@ def draw_datecheck(img, data):
     d.text((lx, y0 + 5), legend, font=F_LEGEND, fill=MUTED)
     record(legend[:24], *ink_box(F_LEGEND, legend, lx, y0 + 5))
     for li in range(3):
-        s = " · ".join(dc["items"][li * 6:(li + 1) * 6])
+        s = " · ".join(dc["items"][li * 7:(li + 1) * 7])
         f = fit_font("NotoSansMono-Regular.ttf", 10, s, CONTENT_W - 16)
         draw_left(d, MARGIN + 8, y0 + 19 + li * 14, s, f, MUTED)
 
