@@ -1,8 +1,9 @@
 """news-image-20261127 v2 — pre-submit verifier (Kirana, Hunter Office).
 
-16 checks: gate (size/bytes/format), determinism, image signal, text
-overlap, story counts, region caps, tag uniqueness, fit, date discipline,
-thumbnail signal. Run with system python3 from the entry directory.
+18 checks: gate (size/bytes/format), determinism, image signal, text
+overlap, story counts, region caps, tag uniqueness, src/ver labels, fit,
+date discipline, thumbnail signal. Run with system python3 from the entry
+directory.
 """
 import hashlib
 import json
@@ -131,38 +132,50 @@ def main():
     check("12 regions 10, max <= 7", len(regions) == 10 and
           max(regions.values()) <= 7, dict(regions))
 
-    # 13. tags unique across all 41 stories
+    # 13. tags unique across all 41 stories; every story carries a named
+    # source + a verification label from the allowed set (D8)
     tags = []
+    stories = [data["lead"]]
     for act in data["acts"]:
         if "hero" in act:
             tags.append(act["hero"]["tag"])
+            stories.append(act["hero"])
         tags.extend(b["tag"] for b in act["briefs"])
-    check("13 tags unique", len(tags) == len(set(tags)),
-          "%d tags, %d unique" % (len(tags), len(set(tags))))
+        stories.extend(act["briefs"])
+    bad_label = [s["id"] for s in stories
+                 if "src" not in s or "ver" not in s or
+                 s["ver"] not in ("OFFICIAL", "REPORTED", "CLAIM", "ONGOING")]
+    check("13 tags unique + src/ver labels", len(tags) == len(set(tags)) and
+          not bad_label, "%d tags, %d unique; bad labels: %s" %
+          (len(tags), len(set(tags)), bad_label))
 
-    # 14. briefs fit one line at 12px (11px fallback) in a 328px column
+    # 14. briefs fit: headline at 11px bold + deck line (src + ver + deck)
+    # at 8px, both inside a 328px column (D8/D9)
     from PIL import ImageFont
-    f12 = ImageFont.truetype(
-        "/usr/share/fonts/truetype/noto/NotoSerif-Bold.ttf", 12)
     f11 = ImageFont.truetype(
         "/usr/share/fonts/truetype/noto/NotoSerif-Bold.ttf", 11)
     ftag = ImageFont.truetype(
         "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", 11)
+    f8 = ImageFont.truetype(
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", 8)
     too_long = []
     for act in data["acts"]:
         for b in act["briefs"]:
-            w = ftag.getbbox(b["tag"] + " — ")[2] + f12.getbbox(b["headline"])[2]
-            if w > 328:
-                w = ftag.getbbox(b["tag"] + " — ")[2] + f11.getbbox(b["headline"])[2]
+            w = ftag.getbbox(b["tag"] + " — ")[2] + \
+                f11.getbbox(b["headline"])[2]
             if w > 328:
                 too_long.append((b["tag"], w))
-    check("14 briefs fit one line", not too_long, too_long)
+            line2 = "%s · %s — %s" % (b["src"], b["ver"], b["deck"])
+            w2 = f8.getbbox(line2)[2]
+            if w2 > 328:
+                too_long.append((b["tag"] + " deck", w2))
+    check("14 briefs + decks fit", not too_long, too_long)
 
-    # 15. date discipline blocks: 12 DATE CHECK items, 3 Saturday slots
+    # 15. date discipline blocks: 18 DATE CHECK items, 3 Saturday slots
     dc = data["datecheck"]["items"]
     sat = data["saturday"]
-    check("15 datecheck 12 + saturday 3 pending",
-          len(dc) == 12 and len(sat["items"]) == 3 and
+    check("15 datecheck 18 + saturday 3 pending",
+          len(dc) == 18 and len(sat["items"]) == 3 and
           "PENDING" in sat["header"], (len(dc), len(sat["items"])))
 
     # 16. thumbnail 300px still carries signal
