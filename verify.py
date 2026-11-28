@@ -174,9 +174,9 @@ def main():
     # 15. date discipline blocks: 20 DATE CHECK items, 3 Saturday slots
     dc = data["datecheck"]["items"]
     sat = data["saturday"]
-    check("15 datecheck 20 + saturday 3 pending",
+    check("15 datecheck 20 + saturday 3 results",
           len(dc) == 20 and len(sat["items"]) == 3 and
-          "PENDING" in sat["header"], (len(dc), len(sat["items"])))
+          "RESULTS" in sat["header"], (len(dc), len(sat["items"])))
 
     # 16. thumbnail 300px still carries signal
     small = im.convert("L").resize((300, 300))
